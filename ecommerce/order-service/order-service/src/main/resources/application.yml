@@ -1,0 +1,39 @@
+management:
+  health:
+    circuitbreakers:
+      enabled: true   # Enables health checks for circuit breakers to be included in the health endpoint.
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # Expose all actuator endpoints (e.g., health, metrics, circuit breakers) over the web interface.
+  endpoint:
+    health:
+      show-details: always  # Always show detailed health information, not just a simple status (useful for debugging).
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        maxRetryAttempts: 3 # Maximum number of retry attempts for failed calls before giving up.
+        waitDuration: 100ms # Wait duration between retry attempts in milliseconds.
+    instances:
+      inventoryRetry:
+        baseConfig: default # Apply the default retry configuration to the inventory service.
+        waitDuration: 200ms # Override waitDuration defined in default config section
+  ratelimiter:
+    instances:
+      inventoryRateLimiter:
+        limitRefreshPeriod: 1s # Time window in which rate limits are applied, refreshed every second.
+        limitForPeriod: 100    # Maximum 100 requests within the time defined by limitRefreshPeriod.
+        timeoutDuration: 10ms  # If a request cannot be processed immediately, it waits for 10ms before timing out.
+  circuitbreaker:
+    instances:
+      inventoryCircuitBreaker:
+        registerHealthIndicator: true             # Register the circuit breaker health status to be visible via the actuator.
+        slidingWindowSize: 10                     # The size of the sliding window used to measure call success/failure rates.
+        slidingWindowType: COUNT_BASED            # Use a count-based window to track a fixed number of calls.
+        minimumNumberOfCalls: 10                  # The minimum number of calls required before the circuit breaker starts calculating the failure rate.
+        failureRateThreshold: 50                  # Circuit breaker will trip if 50% of the calls (5 out of 10) fail.
+        waitDurationInOpenState: 1s               # The duration the circuit stays in the OPEN state before moving to HALF_OPEN.
+        permittedNumberOfCallsInHalfOpenState: 3  # In the HALF_OPEN state, only 3 calls are allowed as a test to see if the service has recovered.
+        eventConsumerBufferSize: 10               # Buffer size for storing circuit breaker events for logging or monitoring.
